@@ -108,10 +108,8 @@ export const useAuthStore = create<AuthState>()(
       immer((set, get) => ({
         ...initialState,
 
-        // Computed property for backward compatibility
-        get user() {
-          return get().session;
-        },
+        // Computed property for backward compatibility - use session directly
+        user: null, // This will be updated when session changes
 
         initialize: async () => {
           await get().verifySession();
@@ -134,6 +132,7 @@ export const useAuthStore = create<AuthState>()(
 
                 set({
                   session: user,
+                  user: user, // Keep user property in sync
                   userPrefs,
                   userRole,
                   isAdmin,
@@ -144,6 +143,7 @@ export const useAuthStore = create<AuthState>()(
               } else {
                 set({ 
                   session: null, 
+                  user: null, // Keep user property in sync
                   userPrefs: null, 
                   userRole: null,
                   isAdmin: false,
