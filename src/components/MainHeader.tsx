@@ -15,7 +15,8 @@ import {
   Bell,
   BookOpen,
   Users,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Shield
 } from "lucide-react";
 
 export function MainHeader() {
@@ -118,6 +119,15 @@ export function MainHeader() {
                   
                   {/* Dropdown menu would go here */}
                   <div className="flex items-center space-x-2">
+                    {/* Admin Dashboard - only show for admin users */}
+                    {userRole === "admin" && (
+                      <Link href="/admin">
+                        <Button variant="ghost" size="icon" className="text-orange-600 hover:text-orange-700">
+                          <Shield className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    )}
+                    
                     <Link href="/profile">
                       <Button variant="ghost" size="icon">
                         <User className="h-4 w-4" />

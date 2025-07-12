@@ -65,6 +65,7 @@ export interface AuthState {
   requireRole: (role: UserRole) => boolean;
   promoteToAdmin: (userId: string) => Promise<{ success: boolean; error?: any }>;
   demoteFromAdmin: (userId: string) => Promise<{ success: boolean; error?: any }>;
+  setTestAdminRole: () => void; // For demo/testing purposes
   reset: () => void;
 }
 
@@ -86,6 +87,7 @@ const initialState: Omit<AuthState,
   | "requireRole"
   | "promoteToAdmin"
   | "demoteFromAdmin"
+  | "setTestAdminRole"
   | "reset"> = {
   session: null,
   userPrefs: null,
@@ -348,6 +350,18 @@ export const useAuthStore = create<AuthState>()(
         setHydrated: () => {
           set({ isHydrated: true });
         },
+
+        // Test/Demo method to switch to admin role
+        setTestAdminRole: () => {
+          set((state) => {
+            state.userRole = "admin";
+            state.isAdmin = true;
+            if (state.userPrefs) {
+              state.userPrefs.role = "admin";
+            }
+          });
+        },
+
         reset: () => {
           set({
             ...initialState,

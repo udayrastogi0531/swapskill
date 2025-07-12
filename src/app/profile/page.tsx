@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DEFAULT_SKILL_CATEGORIES } from "@/types";
+import { useAuthStore } from "@/store/useAuthStore";
 import { 
   Star, 
   MapPin, 
@@ -19,7 +20,8 @@ import {
   Trash2,
   MessageSquare,
   Settings,
-  Share
+  Share,
+  Shield
 } from "lucide-react";
 
 // Mock user data
@@ -73,6 +75,7 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [showAddSkill, setShowAddSkill] = useState(false);
   const [skillType, setSkillType] = useState<'offered' | 'wanted'>('offered');
+  const { userRole, setTestAdminRole } = useAuthStore();
 
   const getLevelColor = (level: string) => {
     switch (level.toLowerCase()) {
@@ -132,6 +135,18 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    {/* Demo Admin Toggle - for testing purposes */}
+                    {userRole !== "admin" && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={setTestAdminRole}
+                        className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                      >
+                        <Shield className="h-4 w-4 mr-1" />
+                        Demo Admin
+                      </Button>
+                    )}
                     <Button variant="outline" size="icon">
                       <Share className="h-4 w-4" />
                     </Button>
