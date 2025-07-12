@@ -7,6 +7,7 @@ import {
   addDoc, 
   updateDoc, 
   deleteDoc, 
+  setDoc,
   query, 
   where, 
   orderBy, 
@@ -40,9 +41,11 @@ export const userService = {
     const userRef = doc(db, COLLECTIONS.USERS, userId);
     const profileData = {
       ...userData,
+      uid: userId,
       id: userId,
+      name: userData.displayName || userData.name || '',
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      lastLoginAt: serverTimestamp(),
       skillsOffered: [],
       skillsWanted: [],
       rating: 0,
@@ -51,7 +54,7 @@ export const userService = {
       isVerified: false
     };
     
-    await updateDoc(userRef, profileData);
+    await setDoc(userRef, profileData);
     return profileData;
   },
 

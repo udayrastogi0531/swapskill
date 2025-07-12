@@ -10,11 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DEFAULT_SKILL_CATEGORIES } from "@/types";
 import { useFirebaseStore } from "@/store/useFirebaseStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { projectInitializer } from "@/lib/initialization";
 import { Search, MapPin, Star, Clock, Filter, MessageSquare, Loader2, ArrowLeftRight } from "lucide-react";
 
 export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedLocation, setSelectedLocation] = useState("");
 
   const { session } = useAuthStore();
@@ -28,15 +29,29 @@ export default function ExplorePage() {
     createConversation
   } = useFirebaseStore();
 
-  // Load initial users on component mount
+  // Load initial users on component mount and initialize project
   useEffect(() => {
-    searchUsers();
+    const initializeAndLoadUsers = async () => {
+      try {
+        // Initialize project with demo data if needed
+        await projectInitializer.initializeProject();
+        
+        // Load users after initialization
+        searchUsers();
+      } catch (error) {
+        console.error('Failed to initialize project:', error);
+        // Still try to load users even if initialization fails
+        searchUsers();
+      }
+    };
+
+    initializeAndLoadUsers();
   }, []);
 
   // Search function
   const handleSearch = () => {
     const query = searchQuery.trim() || undefined;
-    const category = selectedCategory || undefined;
+    const category = selectedCategory === "all" ? undefined : selectedCategory;
     const location = selectedLocation || undefined;
     
     searchUsers(query, category, location);
@@ -135,7 +150,7 @@ export default function ExplorePage() {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   {DEFAULT_SKILL_CATEGORIES.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
