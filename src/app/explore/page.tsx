@@ -68,7 +68,10 @@ export default function ExplorePage() {
   // Handle swap request
   const handleRequestSwap = async (targetUser: any, userSkill: any, targetSkill: any) => {
     if (!session) {
-      alert("Please log in to send swap requests");
+      const shouldSignIn = confirm("Please log in to send swap requests. Would you like to go to the login page?");
+      if (shouldSignIn) {
+        window.location.href = "/login?redirectTo=/explore";
+      }
       return;
     }
 
@@ -93,7 +96,10 @@ export default function ExplorePage() {
   // Handle messaging
   const handleMessage = async (targetUserId: string) => {
     if (!session) {
-      alert("Please log in to send messages");
+      const shouldSignIn = confirm("Please log in to send messages. Would you like to go to the login page?");
+      if (shouldSignIn) {
+        window.location.href = "/login?redirectTo=/explore";
+      }
       return;
     }
 
@@ -127,6 +133,37 @@ export default function ExplorePage() {
             Discover talented people and find skills to learn or share
           </p>
         </div>
+
+        {/* Authentication Notice for Guest Users */}
+        {!session && (
+          <Card className="mb-6 border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                    <Search className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-blue-900 dark:text-blue-100">
+                      Welcome to SwapSkill!
+                    </h3>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      Browse skills and people freely. Sign in to send messages and request skill swaps.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => window.location.href = "/login"}>
+                    Sign In
+                  </Button>
+                  <Button size="sm" onClick={() => window.location.href = "/register"}>
+                    Get Started
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Search and Filters */}
         <Card className="mb-8">
@@ -311,9 +348,10 @@ export default function ExplorePage() {
                         className="flex-1"
                         onClick={() => handleMessage(user.id)}
                         disabled={!session}
+                        title={!session ? "Sign in to send messages" : "Send a message"}
                       >
                         <MessageSquare className="h-4 w-4 mr-1" />
-                        Message
+                        {!session ? "Sign in to Message" : "Message"}
                       </Button>
                       <Button 
                         size="sm" 
@@ -321,16 +359,19 @@ export default function ExplorePage() {
                         onClick={() => {
                           // For now, just show an alert. In a real app, this would open a modal
                           // to select specific skills for the swap request
-                          if (user.skillsOffered?.[0] && session) {
+                          if (user.skillsOffered?.[0]) {
                             handleRequestSwap(user, user.skillsOffered[0], user.skillsWanted?.[0]);
+                          } else if (!session) {
+                            handleRequestSwap(user, null, null);
                           } else {
-                            alert("Please log in to send swap requests");
+                            alert("This user has no skills offered for swap");
                           }
                         }}
                         disabled={!session || !user.skillsOffered?.length}
+                        title={!session ? "Sign in to request swaps" : !user.skillsOffered?.length ? "No skills available for swap" : "Request a skill swap"}
                       >
                         <ArrowLeftRight className="h-4 w-4 mr-1" />
-                        Swap
+                        {!session ? "Sign in to Swap" : "Swap"}
                       </Button>
                     </div>
                   </CardContent>
