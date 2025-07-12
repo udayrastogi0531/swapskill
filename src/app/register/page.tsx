@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useAuthStore } from "@/store/useAuthStore";
 import Link from "next/link";
-import { ArrowRight, Mail, Lock, User, MapPin } from "lucide-react";
+import { ArrowRight, Mail, Lock, User, MapPin, Loader2 } from "lucide-react";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -16,18 +18,56 @@ export default function RegisterPage() {
     confirmPassword: "",
     location: ""
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  
+  const { createAccount } = useAuthStore();
+  const router = useRouter();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    // Clear error when user starts typing
+    if (error) setError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle registration logic here
-    console.log("Registration data:", formData);
+    setError("");
+
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters long");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const result = await createAccount(
+        formData.name, 
+        formData.email, 
+        formData.password, 
+        "user" // Default role
+      );
+      
+      if (result.success) {
+        router.push("/explore"); // Redirect to explore page on successful registration
+      } else {
+        setError(result.error?.message || "Registration failed. Please try again.");
+      }
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -54,6 +94,13 @@ export default function RegisterPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Error Message */}
+              {error && (
+                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                  {error}
+                </div>
+              )}
+
               {/* Name */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Full Name</label>
@@ -140,9 +187,18 @@ export default function RegisterPage() {
               </div>
 
               {/* Submit Button */}
-              <Button type="submit" className="w-full group">
-                Create Account
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              <Button type="submit" className="w-full group" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : (
+                  <>
+                    Create Account
+                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </Button>
             </form>
 

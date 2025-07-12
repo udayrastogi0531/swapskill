@@ -1,9 +1,12 @@
 export interface User {
+  id: string;
   uid: string;
   email: string;
   displayName: string;
+  name: string;
   role: 'user' | 'admin';
   profilePhoto?: string;
+  avatar?: string;
   location?: string;
   bio?: string;
   createdAt: number;
@@ -11,7 +14,9 @@ export interface User {
   skillsOffered: Skill[];
   skillsWanted: Skill[];
   rating: number;
+  reviewCount: number;
   totalSwaps: number;
+  isVerified?: boolean;
 }
 
 export interface Skill {
@@ -32,12 +37,14 @@ export interface SkillCategory {
 
 export interface SwapRequest {
   id: string;
+  requesterId: string;
   requesterUid: string;
   targetUid: string;
   offeredSkill: Skill;
   requestedSkill: Skill;
   status: SwapStatus;
   message?: string;
+  adminNotes?: string;
   createdAt: number;
   updatedAt: number;
   scheduledDate?: number;
@@ -52,6 +59,23 @@ export interface Rating {
   swapRequestId: string;
   rating: number; // 1-5
   comment?: string;
+  createdAt: number;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  timestamp: number;
+  read: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  participants: string[];
+  lastMessage?: Message;
+  updatedAt: number;
   createdAt: number;
 }
 

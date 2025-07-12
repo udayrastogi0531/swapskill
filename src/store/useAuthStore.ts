@@ -15,6 +15,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { userService } from "@/lib/firestore";
 import Cookies from "js-cookie";
 
 // -- Types ----------------------------------------------------------------
@@ -175,15 +176,16 @@ export const useAuthStore = create<AuthState>()(
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             await updateProfile(userCredential.user, { displayName: name });
 
-            const userDoc = doc(db, "users", userCredential.user.uid);
-            const userData = { 
-              displayName: name, 
-              email, 
+            // Create user profile in Firestore
+            await userService.createUserProfile(userCredential.user.uid, {
+              displayName: name,
+              email,
               role,
-              createdAt: Date.now(),
-              lastLoginAt: Date.now()
-            };
-            await setDoc(userDoc, userData, { merge: true });
+              location: "", // Will be updated later
+              bio: "",
+              avatar: userCredential.user.photoURL || "",
+              createdAt: Date.now()
+            });
 
             return { success: true };
           } catch (error) {

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuthStore } from "@/store/useAuthStore";
 import Link from "next/link";
-import { ArrowRight, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -13,18 +15,38 @@ export default function LoginPage() {
     password: ""
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  
+  const { login } = useAuthStore();
+  const router = useRouter();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    // Clear error when user starts typing
+    if (error) setError("");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log("Login data:", formData);
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const result = await login(formData.email, formData.password);
+      if (result.success) {
+        router.push("/explore"); // Redirect to explore page on successful login
+      } else {
+        setError(result.error?.message || "Login failed. Please try again.");
+      }
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -51,6 +73,13 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Error Message */}
+              {error && (
+                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                  {error}
+                </div>
+              )}
+
               {/* Email */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Email Address</label>
@@ -114,9 +143,18 @@ export default function LoginPage() {
               </div>
 
               {/* Submit Button */}
-              <Button type="submit" className="w-full group">
-                Sign In
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              <Button type="submit" className="w-full group" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing In...
+                  </>
+                ) : (
+                  <>
+                    Sign In
+                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </Button>
             </form>
 
