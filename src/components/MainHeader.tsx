@@ -14,7 +14,8 @@ import {
   MessageSquare, 
   Bell,
   BookOpen,
-  Users
+  Users,
+  ArrowLeftRight
 } from "lucide-react";
 
 export function MainHeader() {
@@ -48,6 +49,13 @@ export function MainHeader() {
             >
               <Search className="h-4 w-4" />
               Explore
+            </Link>
+            <Link 
+              href="/requests" 
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+              Requests
             </Link>
             <Link 
               href="/how-it-works" 
