@@ -28,8 +28,8 @@ export function RoleGuard({
   if (!session) {
     if (showError) {
       return (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800">Please sign in to access this content.</p>
+        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <p className="text-destructive">Please sign in to access this content.</p>
         </div>
       );
     }
@@ -40,8 +40,8 @@ export function RoleGuard({
   if (!hasRole(requiredRole)) {
     if (showError) {
       return (
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-yellow-800">
+        <div className="p-4 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <p className="text-yellow-800 dark:text-yellow-200">
             Access denied. Required role: {requiredRole}
           </p>
         </div>

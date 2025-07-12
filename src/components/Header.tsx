@@ -17,19 +17,19 @@ export default function Header() {
     {
       name: "Home",
       link: "/",
-      icon: <IconHome className="h-4 w-4 text-neutral-500 dark:text-white" />,
+      icon: <IconHome className="h-4 w-4 text-muted-foreground" />,
     },
     {
       name: "Questions",
       link: "/questions",
       icon: (
-        <IconWorldQuestion className="h-4 w-4 text-neutral-500 dark:text-white" />
+        <IconWorldQuestion className="h-4 w-4 text-muted-foreground" />
       ),
     },
     {
       name: "Ask Question",
       link: "/questions/ask",
-      icon: <IconPlus className="h-4 w-4 text-neutral-500 dark:text-white" />,
+      icon: <IconPlus className="h-4 w-4 text-muted-foreground" />,
     },
   ];
 
@@ -38,7 +38,7 @@ export default function Header() {
       name: "Profile",
       link: `/users/${user.uid}/${slugify(user.displayName ?? "profile")}`,
       icon: (
-        <IconMessage className="h-4 w-4 text-neutral-500 dark:text-white" />
+        <IconMessage className="h-4 w-4 text-muted-foreground" />
       ),
     });
   }
