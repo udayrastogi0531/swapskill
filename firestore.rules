@@ -1,0 +1,52 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - public read for explore page, authenticated write
+    match /users/{userId} {
+      allow read: if true; // Allow public read for user discovery
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Skills collection - public read for explore page, authenticated write
+    match /skills/{skillId} {
+      allow read: if true; // Allow public read for skill discovery
+      allow write: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // Swap requests - only authenticated users can read/write their own
+    match /swapRequests/{requestId} {
+      allow read: if request.auth != null && 
+        (resource.data.requesterUid == request.auth.uid || 
+         resource.data.targetUid == request.auth.uid);
+      allow write: if request.auth != null && 
+        (resource.data.requesterUid == request.auth.uid || 
+         resource.data.targetUid == request.auth.uid);
+    }
+    
+    // Admin access for swap requests
+    match /swapRequests/{requestId} {
+      allow read, write: if request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Ratings - public read, authenticated write
+    match /ratings/{ratingId} {
+      allow read: if true; // Allow public read for user ratings
+      allow write: if request.auth != null && request.auth.uid == resource.data.fromUid;
+    }
+    
+    // Conversations - only participants can access
+    match /conversations/{conversationId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid in resource.data.participants;
+    }
+    
+    // Messages - only conversation participants can access
+    match /messages/{messageId} {
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/conversations/$(resource.data.conversationId)) &&
+        request.auth.uid in get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data.participants;
+    }
+  }
+}
