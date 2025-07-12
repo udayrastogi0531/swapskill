@@ -19,12 +19,17 @@ import Cookies from "js-cookie";
 
 // -- Types ----------------------------------------------------------------
 
+export type UserRole = "user" | "admin";
+
 export interface UserPrefs {
   reputation?: number;
   avatar?: string;
   bio?: string;
   location?: string;
   website?: string;
+  role?: UserRole;
+  createdAt?: number;
+  lastLoginAt?: number;
   preferences?: {
     theme: "light" | "dark" | "system";
     notifications: Record<"email"|"push"|"answers"|"votes"|"mentions", boolean>;
@@ -39,6 +44,8 @@ export interface AuthState {
   isHydrated: boolean;
   lastSync: number | null;
   connectionStatus: "online" | "offline" | "reconnecting";
+  userRole: UserRole | null;
+  isAdmin: boolean;
 
   // Computed properties for backward compatibility
   user: User | null;
@@ -46,13 +53,18 @@ export interface AuthState {
   initialize: () => Promise<void>;
   verifySession: () => Promise<void>;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: any }>;
-  createAccount: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: any }>;
+  createAccount: (name: string, email: string, password: string, role?: UserRole) => Promise<{ success: boolean; error?: any }>;
   logout: () => Promise<void>;
   signOut: () => Promise<void>; // Alias for logout
   updateUserPrefs: (prefs: Partial<UserPrefs>) => Promise<{ success: boolean; error?: any }>;
   refreshUser: () => Promise<void>;
   setConnectionStatus: (status: AuthState["connectionStatus"]) => void;
   setHydrated: () => void;
+  checkUserRole: () => Promise<UserRole | null>;
+  hasRole: (role: UserRole) => boolean;
+  requireRole: (role: UserRole) => boolean;
+  promoteToAdmin: (userId: string) => Promise<{ success: boolean; error?: any }>;
+  demoteFromAdmin: (userId: string) => Promise<{ success: boolean; error?: any }>;
   reset: () => void;
 }
 
@@ -69,6 +81,11 @@ const initialState: Omit<AuthState,
   | "refreshUser" 
   | "setConnectionStatus" 
   | "setHydrated" 
+  | "checkUserRole"
+  | "hasRole"
+  | "requireRole"
+  | "promoteToAdmin"
+  | "demoteFromAdmin"
   | "reset"> = {
   session: null,
   userPrefs: null,
@@ -76,6 +93,8 @@ const initialState: Omit<AuthState,
   isHydrated: false,
   lastSync: null,
   connectionStatus: "online",
+  userRole: null,
+  isAdmin: false,
   user: null, // Computed property for backward compatibility
 };
 
@@ -105,15 +124,30 @@ export const useAuthStore = create<AuthState>()(
                 const userSnap = await getDoc(userDoc);
                 const userPrefs = userSnap.exists() ? (userSnap.data() as UserPrefs) : null;
 
+                // Get user role from custom claims or userPrefs
+                const idTokenResult = await user.getIdTokenResult();
+                const roleFromClaims = idTokenResult.claims.role as UserRole;
+                const userRole = roleFromClaims || userPrefs?.role || "user";
+                const isAdmin = userRole === "admin";
+
                 set({
                   session: user,
                   userPrefs,
+                  userRole,
+                  isAdmin,
                   isLoading: false,
                   isHydrated: true,
                   lastSync: Date.now(),
                 });
               } else {
-                set({ session: null, userPrefs: null, isLoading: false, isHydrated: true });
+                set({ 
+                  session: null, 
+                  userPrefs: null, 
+                  userRole: null,
+                  isAdmin: false,
+                  isLoading: false, 
+                  isHydrated: true 
+                });
               }
               resolve();
             });
@@ -133,14 +167,21 @@ export const useAuthStore = create<AuthState>()(
           }
         },
 
-        createAccount: async (name, email, password) => {
+        createAccount: async (name, email, password, role = "user") => {
           try {
             set({ isLoading: true });
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             await updateProfile(userCredential.user, { displayName: name });
 
             const userDoc = doc(db, "users", userCredential.user.uid);
-            await setDoc(userDoc, { displayName: name, email }, { merge: true });
+            const userData = { 
+              displayName: name, 
+              email, 
+              role,
+              createdAt: Date.now(),
+              lastLoginAt: Date.now()
+            };
+            await setDoc(userDoc, userData, { merge: true });
 
             return { success: true };
           } catch (error) {
@@ -187,10 +228,119 @@ export const useAuthStore = create<AuthState>()(
           const userSnap = await getDoc(userDoc);
           const userPrefs = userSnap.exists() ? (userSnap.data() as UserPrefs) : null;
 
+          // Update role information
+          const idTokenResult = await user.getIdTokenResult();
+          const roleFromClaims = idTokenResult.claims.role as UserRole;
+          const userRole = roleFromClaims || userPrefs?.role || "user";
+          const isAdmin = userRole === "admin";
+
           set({
             userPrefs,
+            userRole,
+            isAdmin,
             lastSync: Date.now(),
           });
+        },
+
+        checkUserRole: async () => {
+          const user = get().session;
+          if (!user) return null;
+
+          try {
+            const idTokenResult = await user.getIdTokenResult();
+            const roleFromClaims = idTokenResult.claims.role as UserRole;
+            
+            if (roleFromClaims) {
+              return roleFromClaims;
+            }
+
+            // Fallback to Firestore if no custom claims
+            const userDoc = doc(db, "users", user.uid);
+            const userSnap = await getDoc(userDoc);
+            const userPrefs = userSnap.exists() ? (userSnap.data() as UserPrefs) : null;
+            
+            return userPrefs?.role || "user";
+          } catch (error) {
+            console.error("Error checking user role:", error);
+            return "user";
+          }
+        },
+
+        hasRole: (role) => {
+          const currentRole = get().userRole;
+          if (!currentRole) return false;
+          
+          // Admin has access to all roles
+          if (currentRole === "admin") return true;
+          
+          return currentRole === role;
+        },
+
+        requireRole: (role) => {
+          const hasRequiredRole = get().hasRole(role);
+          if (!hasRequiredRole) {
+            console.warn(`Access denied. Required role: ${role}, Current role: ${get().userRole}`);
+          }
+          return hasRequiredRole;
+        },
+
+        promoteToAdmin: async (userId) => {
+          try {
+            const currentUser = get().session;
+            if (!currentUser || !get().isAdmin) {
+              return { success: false, error: "Unauthorized: Admin access required" };
+            }
+
+            // Update user document in Firestore
+            const userDoc = doc(db, "users", userId);
+            await setDoc(userDoc, { 
+              role: "admin",
+              promotedAt: Date.now(),
+              promotedBy: currentUser.uid
+            }, { merge: true });
+
+            // Note: Without Cloud Functions, custom claims won't be set automatically
+            // Role changes will take effect after the user refreshes their session
+            return { success: true };
+          } catch (error: any) {
+            console.error("Error promoting user to admin:", error);
+            return { 
+              success: false, 
+              error: error.message || "Failed to promote user" 
+            };
+          }
+        },
+
+        demoteFromAdmin: async (userId) => {
+          try {
+            const currentUser = get().session;
+            if (!currentUser || !get().isAdmin) {
+              return { success: false, error: "Unauthorized: Admin access required" };
+            }
+
+            // Prevent self-demotion
+            if (currentUser.uid === userId) {
+              return { success: false, error: "Cannot demote yourself" };
+            }
+
+            // Update user document in Firestore
+            const userDoc = doc(db, "users", userId);
+            await setDoc(userDoc, { 
+              role: "user",
+              demotedAt: Date.now(),
+              demotedBy: currentUser.uid
+            }, { merge: true });
+
+            // Note: Without Cloud Functions, custom claims won't be removed automatically
+            // Role changes will take effect after the user refreshes their session
+            return { success: true };
+          } catch (error: any) {
+            console.error("Error demoting user from admin:", error);
+            return { 
+              success: false, 
+              error: error.message || "Failed to demote user" 
+            };
+          }
         },
         setConnectionStatus: (status) => {
           set({ connectionStatus: status });
