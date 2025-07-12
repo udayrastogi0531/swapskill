@@ -48,5 +48,3 @@ SwapSkill is a collaborative platform where users can offer and request skills f
 | Styling        | TailwindCSS (or CSS Modules) |
 
 ---
-
-## 📁 Project Structure
