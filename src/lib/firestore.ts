@@ -97,6 +97,102 @@ export const userService = {
       id: doc.id,
       ...doc.data()
     })) as User[];
+  },
+
+  // Admin Methods
+  async getFlaggedContent() {
+    const q = query(
+      collection(db, "flaggedContent"),
+      orderBy("reportedAt", "desc")
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  },
+
+  async handleFlaggedContent(flagId: string, action: 'approve' | 'reject') {
+    const flagRef = doc(db, "flaggedContent", flagId);
+    
+    if (action === 'reject') {
+      // Remove the flagged content
+      await deleteDoc(flagRef);
+      // TODO: Also remove the actual content (skill, profile, etc.)
+    } else {
+      // Mark as reviewed
+      await updateDoc(flagRef, {
+        reviewed: true,
+        reviewedAt: serverTimestamp(),
+        action: 'approved'
+      });
+    }
+  },
+
+  async banUser(userId: string, reason: string) {
+    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    await updateDoc(userRef, {
+      isBanned: true,
+      banReason: reason,
+      bannedAt: serverTimestamp(),
+      isVerified: false
+    });
+  },
+
+  async unbanUser(userId: string) {
+    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    await updateDoc(userRef, {
+      isBanned: false,
+      banReason: null,
+      bannedAt: null
+    });
+  },
+
+  async sendBroadcastMessage(message: string, type: 'info' | 'warning' | 'success') {
+    const messageRef = collection(db, "systemMessages");
+    await addDoc(messageRef, {
+      content: message,
+      type: type,
+      createdAt: serverTimestamp(),
+      isActive: true
+    });
+  },
+
+  subscribeToAdminData(callback: (data: any) => void): Unsubscribe {
+    // Subscribe to flagged content
+    const flaggedContentQuery = query(
+      collection(db, "flaggedContent"),
+      orderBy("reportedAt", "desc")
+    );
+
+    const systemMessagesQuery = query(
+      collection(db, "systemMessages"),
+      where("isActive", "==", true),
+      orderBy("createdAt", "desc"),
+      limit(10)
+    );
+
+    const unsubscribeFlagged = onSnapshot(flaggedContentQuery, (snapshot) => {
+      const flaggedContent = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      callback({ type: 'flaggedContent', data: flaggedContent });
+    });
+
+    const unsubscribeMessages = onSnapshot(systemMessagesQuery, (snapshot) => {
+      const systemMessages = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      callback({ type: 'systemMessages', data: systemMessages });
+    });
+
+    // Return combined unsubscribe function
+    return () => {
+      unsubscribeFlagged();
+      unsubscribeMessages();
+    };
   }
 };
 

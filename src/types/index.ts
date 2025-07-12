@@ -17,6 +17,9 @@ export interface User {
   reviewCount: number;
   totalSwaps: number;
   isVerified?: boolean;
+  isBanned?: boolean;
+  banReason?: string;
+  bannedAt?: number;
 }
 
 export interface Skill {
@@ -45,6 +48,7 @@ export interface SwapRequest {
   status: SwapStatus;
   message?: string;
   adminNotes?: string;
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
   createdAt: number;
   updatedAt: number;
   scheduledDate?: number;
@@ -80,7 +84,7 @@ export interface Conversation {
 }
 
 export type SkillLevel = 'beginner' | 'intermediate' | 'advanced' | 'expert';
-export type SwapStatus = 'pending' | 'accepted' | 'declined' | 'completed' | 'cancelled';
+export type SwapStatus = 'pending' | 'approved' | 'rejected' | 'accepted' | 'declined' | 'completed' | 'cancelled';
 
 export interface SwapPlatformState {
   users: User[];

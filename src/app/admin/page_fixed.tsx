@@ -49,31 +49,22 @@ import {
   FileText,
   Settings,
   Bell,
-  Trash2,
-  Plus
+  Trash2
 } from "lucide-react";
-import type { SwapRequest, User, SwapStatus } from "@/types";
+import type { SwapRequest, User } from "@/types";
 
 export default function AdminDashboard() {
   const { user, userRole } = useAuthStore();
   const {
     adminRequests,
     users,
-    flaggedContent,
-    systemMessages,
     isLoadingRequests,
     isLoadingUsers,
-    isLoadingAdminData,
+    error,
     loadAdminRequests,
     loadUsers,
-    loadFlaggedContent,
-    updateUserProfile,
-    handleFlaggedContent,
-    banUser,
-    unbanUser,
-    sendBroadcastMessage,
-    subscribeToAdminData,
-    createSwapRequest
+    updateSwapRequestStatus,
+    updateUserProfile
   } = useFirebaseStore();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,135 +72,81 @@ export default function AdminDashboard() {
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [selectedRequest, setSelectedRequest] = useState<SwapRequest | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [adminNotes, setAdminNotes] = useState("");
   const [activeTab, setActiveTab] = useState<"requests" | "users" | "moderation" | "messages" | "reports">("requests");
   const [broadcastMessage, setBroadcastMessage] = useState("");
-  const [broadcastTitle, setBroadcastTitle] = useState("");
   const [messageType, setMessageType] = useState<"info" | "warning" | "success">("info");
+  const [flaggedContent, setFlaggedContent] = useState<any[]>([]);
   const [showBroadcastDialog, setShowBroadcastDialog] = useState(false);
   const [showBanDialog, setShowBanDialog] = useState(false);
   const [banReason, setBanReason] = useState("");
 
-  // Load data on mount and set up real-time subscriptions
+  // Load data on mount
   useEffect(() => {
     if (userRole === 'admin') {
-      console.log('Admin dashboard loading data...');
       loadAdminRequests();
       loadUsers();
       loadFlaggedContent();
-      
-      // Set up real-time subscriptions
-      const unsubscribe = subscribeToAdminData();
-      
-      // Cleanup subscription on unmount
-      return unsubscribe;
     }
-  }, [userRole, loadAdminRequests, loadUsers, loadFlaggedContent, subscribeToAdminData]);
+  }, [userRole, loadAdminRequests, loadUsers]);
 
-  // Debug logging
-  useEffect(() => {
-    console.log('Admin dashboard state:', {
-      users: users.length,
-      adminRequests: adminRequests.length,
-      flaggedContent: flaggedContent.length,
-      userRole,
-      isLoadingUsers,
-      isLoadingRequests
-    });
-  }, [users, adminRequests, flaggedContent, userRole, isLoadingUsers, isLoadingRequests]);
-
-  // Test function to add sample data for demonstration
-  const addSampleData = async () => {
-    console.log('Adding sample data for admin demonstration...');
-    
-    // This is for demonstration purposes only
-    try {
-      const sampleRequest = {
-        requesterId: user?.uid || 'sample-user',
-        requesterUid: user?.uid || 'sample-user',
-        targetUid: 'target-user-uid',
-        status: 'pending' as const,
-        offeredSkill: {
-          id: 'skill1',
-          name: 'JavaScript Programming',
-          category: { id: 'tech', name: 'Technology', icon: '💻', color: 'blue' },
-          level: 'intermediate' as const,
-          description: 'Modern JavaScript development',
-          tags: ['javascript', 'programming', 'web']
-        },
-        requestedSkill: {
-          id: 'skill2',
-          name: 'Python Data Science',
-          category: { id: 'tech', name: 'Technology', icon: '🐍', color: 'green' },
-          level: 'advanced' as const,
-          description: 'Data analysis and machine learning',
-          tags: ['python', 'data', 'ml']
-        },
-        message: 'I would love to learn Python data science in exchange for JavaScript tutoring!',
-        priority: 'normal' as const
-      };
-      
-      await createSwapRequest(sampleRequest);
-      await loadAdminRequests();
-      console.log('Sample request added successfully');
-    } catch (error) {
-      console.error('Error adding sample data:', error);
-    }
+  const loadFlaggedContent = async () => {
+    setFlaggedContent([
+      {
+        id: "flag_001",
+        type: "skill_description",
+        content: "Learn hacking and illegal activities",
+        reportedBy: "user_001",
+        reportedAt: Date.now(),
+        userId: "user_999",
+        skillId: "skill_999"
+      },
+      {
+        id: "flag_002", 
+        type: "profile_bio",
+        content: "Selling drugs and other illegal stuff",
+        reportedBy: "user_002",
+        reportedAt: Date.now(),
+        userId: "user_998"
+      }
+    ]);
   };
 
   const handleBroadcastMessage = async () => {
-    if (!broadcastMessage.trim()) return;
-    
     try {
-      await sendBroadcastMessage(broadcastMessage, messageType);
+      console.log(`Broadcasting ${messageType} message: ${broadcastMessage}`);
       setBroadcastMessage("");
-      setBroadcastTitle("");
       setShowBroadcastDialog(false);
     } catch (error) {
-      console.error("Error sending broadcast message:", error);
+      console.error("Error broadcasting message:", error);
     }
   };
 
   const handleBanUser = async (userId: string) => {
-    if (!banReason.trim()) {
-      alert("Please provide a reason for banning the user.");
-      return;
-    }
-    
-    console.log('Attempting to ban user:', userId, 'with reason:', banReason);
-    
     try {
-      await banUser(userId, banReason);
-      console.log('User banned successfully');
+      await updateUserProfile(userId, { 
+        isVerified: false,
+        isBanned: true,
+        banReason: banReason,
+        bannedAt: Date.now()
+      });
       setShowBanDialog(false);
       setBanReason("");
-      setSelectedUser(null);
-      // Reload users to reflect the change
       await loadUsers();
-      alert("User has been banned successfully.");
     } catch (error) {
       console.error("Error banning user:", error);
-      alert("Failed to ban user. Please try again.");
-    }
-  };
-
-  const handleUnbanUser = async (userId: string) => {
-    console.log('Attempting to unban user:', userId);
-    
-    try {
-      await unbanUser(userId);
-      console.log('User unbanned successfully');
-      await loadUsers();
-      alert("User has been unbanned successfully.");
-    } catch (error) {
-      console.error("Error unbanning user:", error);
-      alert("Failed to unban user. Please try again.");
     }
   };
 
   const handleFlaggedContentAction = async (flagId: string, action: 'approve' | 'reject') => {
     try {
-      await handleFlaggedContent(flagId, action);
-      // Data will be updated automatically through real-time subscription
+      if (action === 'reject') {
+        setFlaggedContent(prev => prev.filter(item => item.id !== flagId));
+      } else {
+        setFlaggedContent(prev => prev.map(item => 
+          item.id === flagId ? { ...item, reviewed: true } : item
+        ));
+      }
     } catch (error) {
       console.error("Error handling flagged content:", error);
     }
@@ -301,28 +238,32 @@ export default function AdminDashboard() {
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleStatusUpdate = async (requestId: string, status: SwapRequest["status"]) => {
+    try {
+      await updateSwapRequestStatus(requestId, status, adminNotes);
+      setSelectedRequest(null);
+      setAdminNotes("");
+      await loadAdminRequests();
+    } catch (error) {
+      console.error("Error updating request status:", error);
+    }
+  };
+
   const handleUserStatusToggle = async (userId: string, currentStatus: boolean) => {
-    console.log('Toggling user verification:', userId, 'current status:', currentStatus);
-    
     try {
       await updateUserProfile(userId, { isVerified: !currentStatus });
-      console.log('User verification status updated successfully');
       await loadUsers();
-      alert(`User has been ${!currentStatus ? 'verified' : 'unverified'} successfully.`);
     } catch (error) {
       console.error("Error updating user status:", error);
-      alert("Failed to update user verification status. Please try again.");
     }
   };
 
   const getStatusBadge = (status: SwapRequest["status"]) => {
-    const variants: Record<SwapStatus, string> = {
+    const variants = {
       pending: "bg-yellow-100 text-yellow-800",
-      approved: "bg-green-100 text-green-800",
-      rejected: "bg-red-100 text-red-800",
-      accepted: "bg-blue-100 text-blue-800",
+      accepted: "bg-green-100 text-green-800",
       declined: "bg-red-100 text-red-800",
-      completed: "bg-green-100 text-green-800",
+      completed: "bg-blue-100 text-blue-800",
       cancelled: "bg-gray-100 text-gray-800"
     };
     return variants[status] || variants.pending;
@@ -367,47 +308,23 @@ export default function AdminDashboard() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Shield className="h-8 w-8" />
-              Admin Dashboard
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Monitor platform activity, manage users, moderate content, and oversee operations
-            </p>
-          </div>
-          {process.env.NODE_ENV === 'development' && (
-            <Button
-              onClick={addSampleData}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Add Sample Request
-            </Button>
-          )}
-        </div>
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Shield className="h-8 w-8" />
+          Admin Dashboard
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Manage swap requests, moderate content, and oversee platform operations
+        </p>
       </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 text-red-500" />
+          <span className="text-red-700">{error}</span>
+        </div>
+      )}
 
       {/* Stats Overview */}
-      <div className="mb-6">
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
-              <div>
-                <h3 className="font-semibold text-blue-900">Admin Dashboard Information</h3>
-                <p className="text-sm text-blue-800 mt-1">
-                  This dashboard is for monitoring and administration only. Swap request approvals/rejections are handled by users themselves. 
-                  Admin functions include: user verification, banning/unbanning, content moderation, platform messaging, and analytics.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardContent className="p-6">
@@ -567,7 +484,7 @@ export default function AdminDashboard() {
                 <p className="text-muted-foreground">
                   {searchQuery || statusFilter !== "all" || priorityFilter !== "all"
                     ? "Try adjusting your search or filters"
-                    : "No swap requests have been created yet. This is a monitoring view - users handle their own request approvals."}
+                    : "No swap requests have been created yet"}
                 </p>
               </CardContent>
             </Card>
@@ -588,22 +505,21 @@ export default function AdminDashboard() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setSelectedRequest(request)}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>Swap Request Details</DialogTitle>
-                          </DialogHeader>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setSelectedRequest(request)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>Swap Request Details</DialogTitle>
+                        </DialogHeader>
                         {selectedRequest && (
                           <div className="space-y-6">
                             <div className="grid grid-cols-2 gap-6">
@@ -630,25 +546,46 @@ export default function AdminDashboard() {
                             {selectedRequest.message && (
                               <div>
                                 <h4 className="font-semibold mb-2">Message</h4>
-                                <p className="text-sm bg-gray-500 p-3 rounded">
+                                <p className="text-sm bg-gray-50 p-3 rounded">
                                   {selectedRequest.message}
                                 </p>
                               </div>
                             )}
 
-
-                            <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                              <p className="text-sm font-medium text-blue-800 mb-1">Admin Note:</p>
-                              <p className="text-sm text-blue-700">
-                                Request approval/rejection is handled by the recipient user, not by admin. 
-                                This is for monitoring purposes only.
-                              </p>
+                            <div>
+                              <h4 className="font-semibold mb-2">Admin Notes</h4>
+                              <textarea
+                                placeholder="Add admin notes..."
+                                value={adminNotes}
+                                onChange={(e) => setAdminNotes(e.target.value)}
+                                className="w-full p-3 border rounded-md resize-none"
+                                rows={3}
+                              />
                             </div>
+
+                            {selectedRequest.status === 'pending' && (
+                              <div className="flex space-x-2">
+                                <Button
+                                  onClick={() => handleStatusUpdate(selectedRequest.id, 'accepted')}
+                                  className="flex items-center gap-2"
+                                >
+                                  <Check className="h-4 w-4" />
+                                  Accept
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  onClick={() => handleStatusUpdate(selectedRequest.id, 'declined')}
+                                  className="flex items-center gap-2"
+                                >
+                                  <X className="h-4 w-4" />
+                                  Decline
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </DialogContent>
                     </Dialog>
-                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -662,7 +599,6 @@ export default function AdminDashboard() {
                         </Badge>
                       </div>
                       <p className="font-semibold">{request.offeredSkill.name}</p>
-                      <p className="text-xs text-muted-foreground">From: {request.requesterId}</p>
                     </div>
 
                     <div className="space-y-2">
@@ -675,7 +611,6 @@ export default function AdminDashboard() {
                         </Badge>
                       </div>
                       <p className="font-semibold">{request.requestedSkill.name}</p>
-                      <p className="text-xs text-muted-foreground">To: {request.targetUid}</p>
                     </div>
                   </div>
 
@@ -748,52 +683,37 @@ export default function AdminDashboard() {
                       <Badge className={u.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}>
                         {u.role}
                       </Badge>
-                      
-                      {!u.isBanned ? (
-                        <>
-                          <Button
-                            variant={u.isVerified ? "outline" : "default"}
-                            size="sm"
-                            onClick={() => handleUserStatusToggle(u.id, u.isVerified || false)}
-                            className="flex items-center gap-2"
-                          >
-                            {u.isVerified ? (
-                              <>
-                                <UserX className="h-4 w-4" />
-                                Unverify
-                              </>
-                            ) : (
-                              <>
-                                <UserCheck className="h-4 w-4" />
-                                Verify
-                              </>
-                            )}
-                          </Button>
-                          
-                          {u.role !== 'admin' && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedUser(u);
-                                setShowBanDialog(true);
-                              }}
-                              className="flex items-center gap-2"
-                            >
-                              <Ban className="h-4 w-4" />
-                              Ban
-                            </Button>
-                          )}
-                        </>
-                      ) : (
+                      <Button
+                        variant={u.isVerified ? "destructive" : "default"}
+                        size="sm"
+                        onClick={() => handleUserStatusToggle(u.id, u.isVerified || false)}
+                        className="flex items-center gap-2"
+                        disabled={u.isBanned}
+                      >
+                        {u.isVerified ? (
+                          <>
+                            <UserX className="h-4 w-4" />
+                            Unverify
+                          </>
+                        ) : (
+                          <>
+                            <UserCheck className="h-4 w-4" />
+                            Verify
+                          </>
+                        )}
+                      </Button>
+                      {!u.isBanned && u.role !== 'admin' && (
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleUnbanUser(u.id)}
+                          onClick={() => {
+                            setSelectedUser(u);
+                            setShowBanDialog(true);
+                          }}
                           className="flex items-center gap-2"
                         >
-                          <UserCheck className="h-4 w-4" />
-                          Unban
+                          <Ban className="h-4 w-4" />
+                          Ban
                         </Button>
                       )}
                     </div>
@@ -1130,20 +1050,6 @@ export default function AdminDashboard() {
             </div>
           </DialogContent>
         </Dialog>
-      )}
-
-      {/* Test Data Button - For Admin Use Only */}
-      {userRole === 'admin' && (
-        <div className="mt-8">
-          <Button
-            onClick={addSampleData}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <ArrowLeftRight className="h-4 w-4" />
-            Add Sample Data
-          </Button>
-        </div>
       )}
     </div>
   );

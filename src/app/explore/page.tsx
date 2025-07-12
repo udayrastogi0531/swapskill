@@ -60,7 +60,7 @@ export default function ExplorePage() {
   // Clear search
   const handleClearSearch = () => {
     setSearchQuery("");
-    setSelectedCategory("");
+    setSelectedCategory("all");
     setSelectedLocation("");
     searchUsers(); // Load all users
   };

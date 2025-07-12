@@ -40,6 +40,11 @@ interface FirebaseState {
   selectedLocation: string;
   searchResults: User[];
 
+  // Admin data
+  flaggedContent: any[];
+  systemMessages: any[];
+  isLoadingAdminData: boolean;
+
   // Error handling
   error: string | null;
 
@@ -60,6 +65,7 @@ interface FirebaseState {
   createSwapRequest: (requestData: Omit<SwapRequest, "id" | "createdAt" | "updatedAt">) => Promise<void>;
   updateSwapRequestStatus: (requestId: string, status: SwapRequest["status"], adminNotes?: string) => Promise<void>;
   loadAllSwapRequests: (status?: SwapRequest["status"], priority?: string) => Promise<void>; // For admin
+  loadAdminRequests: () => Promise<void>; // Alias for loadAllSwapRequests
 
   // Rating actions
   addRating: (ratingData: Omit<Rating, "id" | "createdAt">) => Promise<void>;
@@ -81,6 +87,14 @@ interface FirebaseState {
   // Error handling
   setError: (error: string | null) => void;
   clearError: () => void;
+
+  // Admin actions
+  loadFlaggedContent: () => Promise<void>;
+  handleFlaggedContent: (flagId: string, action: 'approve' | 'reject') => Promise<void>;
+  banUser: (userId: string, reason: string) => Promise<void>;
+  unbanUser: (userId: string) => Promise<void>;
+  sendBroadcastMessage: (message: string, type: 'info' | 'warning' | 'success') => Promise<void>;
+  subscribeToAdminData: () => () => void; // Returns unsubscribe function
 
   // Reset
   reset: () => void;
@@ -104,6 +118,9 @@ const initialState = {
   selectedLocation: "",
   searchResults: [],
   error: null,
+  flaggedContent: [],
+  systemMessages: [],
+  isLoadingAdminData: false,
 };
 
 export const useFirebaseStore = create<FirebaseState>()(
@@ -315,6 +332,19 @@ export const useFirebaseStore = create<FirebaseState>()(
         }
       },
 
+      loadAdminRequests: async () => {
+        try {
+          set({ isLoadingRequests: true, error: null });
+          const requests = await swapRequestService.getAllSwapRequests();
+          set({ adminRequests: requests });
+        } catch (error: any) {
+          console.error("Error loading admin requests:", error);
+          set({ error: error.message || "Failed to load admin requests" });
+        } finally {
+          set({ isLoadingRequests: false });
+        }
+      },
+
       // Rating actions
       addRating: async (ratingData) => {
         try {
@@ -451,6 +481,87 @@ export const useFirebaseStore = create<FirebaseState>()(
 
       clearError: () => {
         set({ error: null });
+      },
+
+      // Admin actions
+      loadFlaggedContent: async () => {
+        try {
+          set({ isLoadingAdminData: true, error: null });
+          const flaggedContent = await userService.getFlaggedContent();
+          set({ flaggedContent });
+        } catch (error: any) {
+          console.error("Error loading flagged content:", error);
+          set({ error: error.message || "Failed to load flagged content" });
+        } finally {
+          set({ isLoadingAdminData: false });
+        }
+      },
+
+      handleFlaggedContent: async (flagId, action) => {
+        try {
+          set({ error: null });
+          await userService.handleFlaggedContent(flagId, action);
+          
+          // Update local state
+          set((state) => {
+            state.flaggedContent = state.flaggedContent.filter(f => f.id !== flagId);
+          });
+        } catch (error: any) {
+          console.error("Error handling flagged content:", error);
+          set({ error: error.message || "Failed to handle flagged content" });
+        }
+      },
+
+      banUser: async (userId, reason) => {
+        try {
+          set({ error: null });
+          await userService.banUser(userId, reason);
+          
+          // Update local state
+          set((state) => {
+            const userIndex = state.users.findIndex(u => u.id === userId);
+            if (userIndex !== -1) {
+              state.users[userIndex].isBanned = true;
+            }
+          });
+        } catch (error: any) {
+          console.error("Error banning user:", error);
+          set({ error: error.message || "Failed to ban user" });
+        }
+      },
+
+      unbanUser: async (userId) => {
+        try {
+          set({ error: null });
+          await userService.unbanUser(userId);
+          
+          // Update local state
+          set((state) => {
+            const userIndex = state.users.findIndex(u => u.id === userId);
+            if (userIndex !== -1) {
+              state.users[userIndex].isBanned = false;
+            }
+          });
+        } catch (error: any) {
+          console.error("Error unbanning user:", error);
+          set({ error: error.message || "Failed to unban user" });
+        }
+      },
+
+      sendBroadcastMessage: async (message, type) => {
+        try {
+          set({ error: null });
+          await userService.sendBroadcastMessage(message, type);
+        } catch (error: any) {
+          console.error("Error sending broadcast message:", error);
+          set({ error: error.message || "Failed to send broadcast message" });
+        }
+      },
+
+      subscribeToAdminData: () => {
+        return userService.subscribeToAdminData((data) => {
+          set({ flaggedContent: data.flaggedContent, systemMessages: data.systemMessages });
+        });
       },
 
       // Reset
