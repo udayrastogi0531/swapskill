@@ -15,7 +15,6 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { userService } from "@/lib/firestore";
 import Cookies from "js-cookie";
 
 // -- Types ----------------------------------------------------------------
@@ -66,7 +65,6 @@ export interface AuthState {
   requireRole: (role: UserRole) => boolean;
   promoteToAdmin: (userId: string) => Promise<{ success: boolean; error?: any }>;
   demoteFromAdmin: (userId: string) => Promise<{ success: boolean; error?: any }>;
-  setTestAdminRole: () => void; // For demo/testing purposes
   reset: () => void;
 }
 
@@ -88,7 +86,6 @@ const initialState: Omit<AuthState,
   | "requireRole"
   | "promoteToAdmin"
   | "demoteFromAdmin"
-  | "setTestAdminRole"
   | "reset"> = {
   session: null,
   userPrefs: null,
@@ -109,8 +106,10 @@ export const useAuthStore = create<AuthState>()(
       immer((set, get) => ({
         ...initialState,
 
-        // Computed property for backward compatibility - use session directly
-        user: null, // This will be updated when session changes
+        // Computed property for backward compatibility
+        get user() {
+          return get().session;
+        },
 
         initialize: async () => {
           await get().verifySession();
@@ -133,7 +132,6 @@ export const useAuthStore = create<AuthState>()(
 
                 set({
                   session: user,
-                  user: user, // Keep user property in sync
                   userPrefs,
                   userRole,
                   isAdmin,
@@ -144,7 +142,6 @@ export const useAuthStore = create<AuthState>()(
               } else {
                 set({ 
                   session: null, 
-                  user: null, // Keep user property in sync
                   userPrefs: null, 
                   userRole: null,
                   isAdmin: false,
@@ -176,16 +173,15 @@ export const useAuthStore = create<AuthState>()(
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             await updateProfile(userCredential.user, { displayName: name });
 
-            // Create user profile in Firestore
-            await userService.createUserProfile(userCredential.user.uid, {
-              displayName: name,
-              email,
+            const userDoc = doc(db, "users", userCredential.user.uid);
+            const userData = { 
+              displayName: name, 
+              email, 
               role,
-              location: "", // Will be updated later
-              bio: "",
-              avatar: userCredential.user.photoURL || "",
-              createdAt: Date.now()
-            });
+              createdAt: Date.now(),
+              lastLoginAt: Date.now()
+            };
+            await setDoc(userDoc, userData, { merge: true });
 
             return { success: true };
           } catch (error) {
@@ -352,18 +348,6 @@ export const useAuthStore = create<AuthState>()(
         setHydrated: () => {
           set({ isHydrated: true });
         },
-
-        // Test/Demo method to switch to admin role
-        setTestAdminRole: () => {
-          set((state) => {
-            state.userRole = "admin";
-            state.isAdmin = true;
-            if (state.userPrefs) {
-              state.userPrefs.role = "admin";
-            }
-          });
-        },
-
         reset: () => {
           set({
             ...initialState,

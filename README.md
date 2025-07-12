@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+🔄 SwapSkill — Connect. Trade. Grow.
 
-## Getting Started
+> Built with ❤️ by **Paras Rana**, **Uday Rastogi**, and **Kashish Sharma**
 
-First, run the development server:
+SwapSkill is a collaborative platform where users can offer and request skills from others in the community. Whether you're great at Photoshop and want to learn Excel, or you're offering UI design in exchange for marketing help — SwapSkill enables secure, peer-to-peer skill exchange powered by Firebase.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📌 Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- 🔐 **Firebase Authentication**  
+  Secure login via email or Google accounts.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- 👥 **Role-Based Access Control**  
+  Distinct roles for Admin and User with different privileges.
 
-## Learn More
+- 📃 **Skill Listing**  
+  Users can create public profiles showcasing skills they offer and need.
 
-To learn more about Next.js, take a look at the following resources:
+- 🔍 **Skill Matching & Filtering**  
+  Browse, search, and filter users by specific skills and availability.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- 🔁 **Skill Swap Requests**  
+  Send, accept, reject, or delete requests with real-time status updates.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- ⭐ **Post-Swap Ratings**  
+  Feedback system after completed swaps to build trust and credibility.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🧠 How It Works
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **User signs up** with email or Google via Firebase.
+2. They **set up a profile** with their offered and wanted skills.
+3. Browse others and **send a swap request**.
+4. Accept or reject pending swaps.
+5. Rate your partner after a successful exchange.
+
+---
+
+## ⚙️ Tech Stack
+
+| Layer           | Tools/Frameworks             |
+|----------------|------------------------------|
+| Frontend       | React, Next.js               |
+| Auth & Backend | Firebase (Auth, Firestore DB)|
+| Hosting        | Firebase Hosting             |
+| Styling        | TailwindCSS (or CSS Modules) |
+
+---
+
+## 📁 Project Structure
